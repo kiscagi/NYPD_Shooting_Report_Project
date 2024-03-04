@@ -1,0 +1,202 @@
+---
+title: "NYPD Shooting Incident Data Report"
+author: "T.Panzarino"
+date: "2024-02-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read in NYPD Data
+
+1.  Assign NYPD data URL to variable "url"
+2.  Read in data using read_csv()
+
+```{r get NYPD Data}
+library(tidyverse)
+url <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
+NYPD_data = read_csv(url)
+
+```
+
+## Clean up data
+
+1.  Replace (null) and UNKNOWN values with NA to create a consistent way to filter data
+2.  Replace "Dwelling" with "Housing" as they contain the same types of locations
+3.  Remove columns that contain information not useful to us, such as coordinates and jurisdiction code. We still have Borough information, Location (Indoor/Outdoor), precinct, location classification and location description to describe where the shooting took place. Jurisdiction is not necessary if we have precinct and borough information.
+4.  Rename columns to shorter, cleaner versions.
+
+```{r clean NYPD data}
+
+NYPD_data[NYPD_data == "(null)"] <- NA
+NYPD_data[NYPD_data == "NONE"] <- NA
+NYPD_data[NYPD_data == "UNKNOWN"] <- NA
+NYPD_data[NYPD_data == "DWELLING"] <- "HOUSING"
+
+library(lubridate)
+
+NYPD_data <- NYPD_data %>%
+  select(-c(Latitude, Longitude, X_COORD_CD, Y_COORD_CD, Lon_Lat, JURISDICTION_CODE)) %>%
+  mutate(OCCUR_DATE = mdy(OCCUR_DATE)) %>%
+  rename(
+    date = OCCUR_DATE,
+    time = OCCUR_TIME,
+    borough = BORO,
+    indoor_outdoor = LOC_OF_OCCUR_DESC,
+    loc_categ = LOCATION_DESC,
+    loc_desc = LOC_CLASSFCTN_DESC,
+    murder = STATISTICAL_MURDER_FLAG,
+    perp_age= PERP_AGE_GROUP,
+    perp_sex = PERP_SEX,
+    prep_race = PERP_RACE,
+    vic_age = VIC_AGE_GROUP,
+    vic_sex = VIC_SEX,
+    vic_race =  VIC_RACE,
+    precinct = PRECINCT,
+    incident = INCIDENT_KEY
+  ) 
+```
+
+4.  View data summary
+
+```{r original data summary}
+summary(NYPD_data)
+
+```
+
+## Create new data sets from NYPD data
+
+1.  Create data set for total shootings/ day using count().
+
+```{r NYPD totals}
+NYPD_totals <- NYPD_data %>%
+  count(date) %>%
+  rename(incidents = n)
+  
+
+```
+
+```{r totals summary}
+
+summary(NYPD_totals)
+
+```
+
+2.  Create data set for total shootings/ day per borough using pivot_wider and count(). Rename the boroughs to lowercase form.
+
+```{r NYPD borough totals}
+NYPD_borough_totals <- NYPD_data %>%
+  count(date, borough) %>%
+  pivot_wider(names_from = borough, values_from = n) %>%
+  rename(
+    brooklyn = BROOKLYN,
+    queens = QUEENS,
+    manhattan = MANHATTAN,
+    staten_island = `STATEN ISLAND`,
+    bronx = BRONX
+  )
+  
+```
+
+```{r boroughs summary}
+
+summary(NYPD_borough_totals)
+
+```
+3. Create data set with total number of incidents per location description. I removed other and NA because it was too much of an outlier to plot against other locations later on.
+
+```{r locations breakdown}
+NYPD_locs <- NYPD_data %>%
+  count(loc_desc) %>%
+  rename(
+    incidents = n)
+
+NYPD_locs <-NYPD_locs[-c(3, 9), ]
+
+
+```
+
+
+##Visualizations
+
+1.  Create plot for all incidents
+
+```{r total indicents}
+NYPD_totals %>%
+  filter(incidents >= 0 ) %>%
+  ggplot(aes(x = date, y = incidents)) +
+  geom_line(aes(color = "incidents")) +
+  #geom_point(aes(color = "n")) +
+  #geom_line(aes(y = BROOKLYN, color = "BROOKLYN")) +
+  #geom_point(aes(y = BROOKLYN, color = "BROOKLYN")) +
+  #scale_y_log10() +
+  ylim(-10,70) +
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
+  labs(title = "NYPD: Total Shooting Incidents", y = NULL)
+```
+
+2.  Create plot for boroughs. Due to the volume of data, only Bronx, Brooklyn and Queens were plotted between November 2022 and end of year 2022.
+
+```{r total indicents/ borough}
+NYPD_borough_totals %>%
+  
+  ggplot(aes(x = date, y = bronx)) +
+  geom_line(aes(color = "Bronx")) +
+  geom_point(aes(color = "Bronx")) +
+  geom_line(aes(y = brooklyn, color = "Brooklyn")) +
+  geom_point(aes(y = brooklyn, color = "Brooklyn")) +
+  geom_line(aes(y = queens, color = "Queens")) +
+  geom_point(aes(y = queens, color = "Queens")) +
+  #geom_line(aes(y = manhattan, color = "Manhattan")) +
+  #geom_point(aes(y = manhattan, color = "Manhattan")) +
+  #geom_line(aes(y = staten_island, color = "Staten Island")) +
+  #geom_point(aes(y = staten_island, color = "Staten Island")) +
+  ylim(-5,15) +
+  xlim(as.Date(c('2022-11-01', '2023-01-01'), format="%Y-%m-%d"))+
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
+  labs(title = "NYPD: Shooting Incidents in Bronx, Brooklyn, Queens from November 2022 through the End of Year", y = NULL)
+```
+ 
+ 3. Create plot for locations
+ 
+```{r location plot}
+ ggplot(NYPD_locs, aes(x = loc_desc, y = incidents)) +
+ geom_bar(stat = "identity") +
+ theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
+ labs(title = "NYPD: Total Shooting Incidents Based on Location, 2006-2022", y = NULL)
+
+```
+
+##Model
+
+1.Use a linear model to see if there is any relationship between date and number of shootings
+2. Determine difference between predicted numbers and actual numbers
+3. Plot difference bewteen predicted and actual values
+
+
+```{r first data model}
+mod <- lm(incidents ~ date, data = NYPD_totals)
+summary(mod)
+
+totals_w_pred <- NYPD_totals %>%
+  mutate(pred = predict(mod))
+
+summary(totals_w_pred)
+```
+
+```{r model plot}
+
+totals_w_pred %>% ggplot() +
+  geom_point(aes(x = date, y = incidents), color = "blue") +
+  geom_point(aes(x = date, y = pred), color = "red")
+
+```
+
+## Conclusion/Bias
+
+Having grown up on Long Island, I am very familiar with the NYC boroughs and this may have increased the amount of Bias I have towards this data. I automatically know which boroughs have a more suburban layout versus the more urban ones, leading me to assume there would be more shootings in the urban locations. I also know which areas have historically experienced more violence. I believe that the location data is the most biased, as there appear to be many different descriptions that may or may not be describing the same type of location.  I think that this data set should have included population size of each borough, so that shootings could be explored in proportion to population size. This may be a more accurate way to portray this data than volume of incidents alone. Based on the date plotting/model, it appears that there may be a slight trend of shootings going down over time in the 5 boroughs. It appears that during the holiday season (November 01- end of year 2022) there are less shootings and less variations in shooting amounts in queens compared to the Bronx and Brooklyn. After creating a box plot of total number of shootings per locations, it appears most shootings happen on the street, followed by housing. 
+
+
+
