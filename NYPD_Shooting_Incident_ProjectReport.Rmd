@@ -105,7 +105,8 @@ NYPD_borough_totals <- NYPD_data %>%
 summary(NYPD_borough_totals)
 
 ```
-3. Create data set with total number of incidents per location description. I removed other and NA because it was too much of an outlier to plot against other locations later on.
+
+3.  Create data set with total number of incidents per location description. I removed other and NA because it was too much of an outlier to plot against other locations later on.
 
 ```{r locations breakdown}
 NYPD_locs <- NYPD_data %>%
@@ -118,8 +119,7 @@ NYPD_locs <-NYPD_locs[-c(3, 9), ]
 
 ```
 
-
-##Visualizations
+## Visualizations
 
 1.  Create plot for all incidents
 
@@ -158,9 +158,9 @@ NYPD_borough_totals %>%
   theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
   labs(title = "NYPD: Shooting Incidents in Bronx, Brooklyn, Queens from November 2022 through the End of Year", y = NULL)
 ```
- 
- 3. Create plot for locations
- 
+
+3.  Create plot for locations
+
 ```{r location plot}
  ggplot(NYPD_locs, aes(x = loc_desc, y = incidents)) +
  geom_bar(stat = "identity") +
@@ -169,12 +169,9 @@ NYPD_borough_totals %>%
 
 ```
 
-##Model
+## Model
 
-1.Use a linear model to see if there is any relationship between date and number of shootings
-2. Determine difference between predicted numbers and actual numbers
-3. Plot difference bewteen predicted and actual values
-
+1.Use a linear model to see if there is any relationship between date and number of shootings 2. Determine difference between predicted numbers and actual numbers 3. Plot difference bewteen predicted and actual values
 
 ```{r first data model}
 mod <- lm(incidents ~ date, data = NYPD_totals)
@@ -196,7 +193,4 @@ totals_w_pred %>% ggplot() +
 
 ## Conclusion/Bias
 
-Having grown up on Long Island, I am very familiar with the NYC boroughs and this may have increased the amount of Bias I have towards this data. I automatically know which boroughs have a more suburban layout versus the more urban ones, leading me to assume there would be more shootings in the urban locations. I also know which areas have historically experienced more violence. I believe that the location data is the most biased, as there appear to be many different descriptions that may or may not be describing the same type of location.  I think that this data set should have included population size of each borough, so that shootings could be explored in proportion to population size. This may be a more accurate way to portray this data than volume of incidents alone. Based on the date plotting/model, it appears that there may be a slight trend of shootings going down over time in the 5 boroughs. It appears that during the holiday season (November 01- end of year 2022) there are less shootings and less variations in shooting amounts in queens compared to the Bronx and Brooklyn. After creating a box plot of total number of shootings per locations, it appears most shootings happen on the street, followed by housing. 
-
-
-
+Having grown up on Long Island, I am very familiar with the NYC boroughs and this may have increased the amount of Bias I have towards this data. I automatically know which boroughs have a more suburban layout versus the more urban ones, leading me to assume there would be more shootings in the urban locations. I also know which areas have historically experienced more violence. I believe that the location data is the most biased, as there appear to be many different descriptions that may or may not be describing the same type of location. I think that this data set should have included population size of each borough, so that shootings could be explored in proportion to population size. This may be a more accurate way to portray this data than volume of incidents alone. Based on the date plotting/model, it appears that there may be a slight trend of shootings going down over time in the 5 boroughs. It appears that during the holiday season (November 01- end of year 2022) there are less shootings and less variations in shooting amounts in queens compared to the Bronx and Brooklyn. After creating a box plot of total number of shootings per locations, it appears most shootings happen on the street, followed by housing.
